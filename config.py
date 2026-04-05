@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # DIRECTORY STUFF
@@ -39,22 +39,35 @@ EOS_TOKEN = "<eos>"
 PAD_TOKEN = "<pad>"
 BOS_TOKEN = "<bos>"
 UNK_TOKEN = "<unk>"
-SPECIAL_TOKENS = (PAD_TOKEN, BOS_TOKEN, EOS_TOKEN, UNK_TOKEN)
 
 
-@dataclass
+@dataclass(frozen=True)
+class SpecialTokens:
+    pad: str = PAD_TOKEN
+    bos: str = BOS_TOKEN
+    eos: str = EOS_TOKEN
+    unk: str = UNK_TOKEN
+    all: list[str] = field(
+        default_factory=lambda: [PAD_TOKEN, BOS_TOKEN, EOS_TOKEN, UNK_TOKEN]
+    )
+
+
+SPECIAL_TOKENS = SpecialTokens()
+
+
+@dataclass(frozen=True)
 class DataConfig:
     training_file: str = TRAIN_FILENAME
     validation_file: str = VALID_FILENAME
     story_delimiter: str = STORY_DELIMITER
-    special_tokens: tuple[str] = SPECIAL_TOKENS
+    special_tokens: SpecialTokens = SPECIAL_TOKENS
 
 
 DATA = DataConfig()
 
 # TRAINING STUFF
 SEED = 242
-MAX_TRAIN_STORIES = 200_000
+MAX_TRAIN_STORIES = 1_000_000
 VOCAB_SIZE = 3_000
 CONTEXT_LENGTH = 128
 CHECKPOINT_EVERY = 100
@@ -78,3 +91,20 @@ class TrainingConfig:
 
 
 TRAINING_CONFIG = TrainingConfig()
+
+
+@dataclass
+class ModelConfig:
+    name: str
+    d_model: int
+    n_heads: int
+    n_layers: int
+    d_ff: int
+    batch_size: int
+    learning_rate: float
+    weight_decay: float
+    warmup_steps: int
+    max_steps: int
+    dropout: float = 0.1
+    grad_clip_norm: float = 1.0
+    use_amp: bool = True
