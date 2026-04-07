@@ -18,6 +18,7 @@ DATA_DIR = ROOT / "data"
 ARTIFACTS_DIR = ROOT / "artifacts"
 SHARED_DIR = ARTIFACTS_DIR / "shared"
 RUN_DIR = ARTIFACTS_DIR / "runs"
+COLAB_DIR = Path("/content/drive/MyDrive/courses/242B/HW3")
 
 # Data files and configuration
 TRAIN_FILENAME = "TinyStoriesV2-GPT4-train.txt"
@@ -47,8 +48,10 @@ class RunConfig:
 
 @dataclass
 class DataConfig:
-    training_file: str = "/content/drive/MyDrive/courses/242B/HW3" / TRAIN_FILENAME
-    validation_file: str = "/content/drive/MyDrive/courses/242B/HW3" / VALID_FILENAME
+    training_file_colab: str = COLAB_DIR / TRAIN_FILENAME
+    training_file_local: str = COLAB_DIR / TRAIN_FILENAME
+    validation_file_colab: str = DATA_DIR / VALID_FILENAME
+    validation_file_local: str = DATA_DIR / VALID_FILENAME
 
 
 @dataclass
