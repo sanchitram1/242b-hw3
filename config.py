@@ -16,9 +16,12 @@ else:
 # Directory level configuration
 DATA_DIR = ROOT / "data"
 ARTIFACTS_DIR = ROOT / "artifacts"
-SHARED_DIR = ARTIFACTS_DIR / "shared"
-RUN_DIR = ARTIFACTS_DIR / "runs"
 COLAB_DIR = Path("/content/drive/MyDrive/courses/242B/HW3")
+IS_COLAB = "COLAB_RELEASE_TAG" in os.environ
+ACTIVE_DATA_DIR = COLAB_DIR if IS_COLAB else DATA_DIR
+ACTIVE_ARTIFACTS_DIR = (COLAB_DIR / "artifacts") if IS_COLAB else ARTIFACTS_DIR
+SHARED_DIR = ACTIVE_ARTIFACTS_DIR / "shared"
+RUN_DIR = ACTIVE_ARTIFACTS_DIR / "runs"
 
 # Data files and configuration
 TRAIN_FILENAME = "TinyStoriesV2-GPT4-train.txt"
@@ -30,27 +33,28 @@ class RunConfig:
 
     def __init__(self, run_id: str) -> None:
         self.run_id = run_id
+        self.run_dir = RUN_DIR / run_id
+        self.metrics = self.run_dir / "metrics"
+        self.models = self.run_dir / "models"
+        self.plots = self.run_dir / "plots"
 
         # create the directory if it doesn't exist
-        if os.path.isdir(RUN_DIR / run_id):
-            raise FileExistsError(f"Directory already exists: {RUN_DIR / run_id}")
+        if self.run_dir.exists():
+            raise FileExistsError(f"Directory already exists: {self.run_dir}")
         else:
-            os.makedirs(RUN_DIR / run_id)
-            os.makedirs(RUN_DIR / run_id / "metrics")
-            os.makedirs(RUN_DIR / run_id / "models")
-            os.makedirs(RUN_DIR / run_id / "plots")
-            print(f"Created {RUN_DIR / run_id} and subfolders")
-
-        self.metrics = RUN_DIR / run_id / "metrics"
-        self.models = RUN_DIR / run_id / "models"
-        self.plots = RUN_DIR / run_id / "plots"
+            self.metrics.mkdir(parents=True)
+            self.models.mkdir()
+            self.plots.mkdir()
+            print(f"Created {self.run_dir} and subfolders")
 
 
 @dataclass
 class DataConfig:
+    training_file: str = ACTIVE_DATA_DIR / TRAIN_FILENAME
+    validation_file: str = ACTIVE_DATA_DIR / VALID_FILENAME
     training_file_colab: str = COLAB_DIR / TRAIN_FILENAME
-    training_file_local: str = COLAB_DIR / TRAIN_FILENAME
-    validation_file_colab: str = DATA_DIR / VALID_FILENAME
+    training_file_local: str = DATA_DIR / TRAIN_FILENAME
+    validation_file_colab: str = COLAB_DIR / VALID_FILENAME
     validation_file_local: str = DATA_DIR / VALID_FILENAME
 
 
