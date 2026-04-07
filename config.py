@@ -47,8 +47,8 @@ class RunConfig:
 
 @dataclass
 class DataConfig:
-    training_file: str = DATA_DIR / TRAIN_FILENAME
-    validation_file: str = DATA_DIR / VALID_FILENAME
+    training_file: str = "/content/drive/MyDrive/courses/242B/HW3" / TRAIN_FILENAME
+    validation_file: str = "/content/drive/MyDrive/courses/242B/HW3" / VALID_FILENAME
 
 
 @dataclass
