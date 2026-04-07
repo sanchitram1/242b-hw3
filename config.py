@@ -40,7 +40,7 @@ class RunConfig:
 
         # create the directory if it doesn't exist
         if self.run_dir.exists():
-            raise FileExistsError(f"Directory already exists: {self.run_dir}")
+            print(f"Directory already exists: {self.run_dir}")
         else:
             self.metrics.mkdir(parents=True)
             self.models.mkdir()
