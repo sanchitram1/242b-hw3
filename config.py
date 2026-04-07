@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
+import os
+from dataclasses import dataclass
 from pathlib import Path
 
-# DIRECTORY STUFF
 if "__file__" in globals():
     ROOT = Path(__file__).resolve().parent
 else:
@@ -13,84 +13,63 @@ else:
     else:
         ROOT = _cwd
 
+# Directory level configuration
 DATA_DIR = ROOT / "data"
 ARTIFACTS_DIR = ROOT / "artifacts"
-MODELS_DIR = ARTIFACTS_DIR / "models"
-PLOTS_DIR = ARTIFACTS_DIR / "plots"
-TOKENIZER_DIR = ARTIFACTS_DIR / "tokenizers"
+SHARED_DIR = ARTIFACTS_DIR / "shared"
+RUN_DIR = ARTIFACTS_DIR / "runs"
 
-
-@dataclass
-class DirectoryConfig:
-    data: str = DATA_DIR
-    artifacts: str = ARTIFACTS_DIR
-    models: str = MODELS_DIR
-    plots: str = PLOTS_DIR
-    tokenizers: str = TOKENIZER_DIR
-
-
-DIRECTORIES = DirectoryConfig()
-
-# DATA STUFF
+# Data files and configuration
 TRAIN_FILENAME = "TinyStoriesV2-GPT4-train.txt"
 VALID_FILENAME = "TinyStoriesV2-GPT4-valid.txt"
-STORY_DELIMITER = "<|endoftext|>"
-EOS_TOKEN = "<eos>"
-PAD_TOKEN = "<pad>"
-BOS_TOKEN = "<bos>"
-UNK_TOKEN = "<unk>"
 
 
-@dataclass(frozen=True)
-class SpecialTokens:
-    pad: str = PAD_TOKEN
-    bos: str = BOS_TOKEN
-    eos: str = EOS_TOKEN
-    unk: str = UNK_TOKEN
-    all: list[str] = field(
-        default_factory=lambda: [PAD_TOKEN, BOS_TOKEN, EOS_TOKEN, UNK_TOKEN]
-    )
+class RunConfig:
+    """A configuration object to handle all the run-specific information"""
 
+    def __init__(self, run_id: str) -> None:
+        self.run_id = run_id
 
-SPECIAL_TOKENS = SpecialTokens()
+        # create the directory if it doesn't exist
+        if os.path.isdir(RUN_DIR / run_id):
+            raise FileExistsError(f"Directory already exists: {RUN_DIR / run_id}")
+        else:
+            os.makedirs(RUN_DIR / run_id)
+            os.makedirs(RUN_DIR / run_id / "metrics")
+            os.makedirs(RUN_DIR / run_id / "models")
+            os.makedirs(RUN_DIR / run_id / "plots")
+            print(f"Created {RUN_DIR / run_id} and subfolders")
 
-
-@dataclass(frozen=True)
-class DataConfig:
-    training_file: str = TRAIN_FILENAME
-    validation_file: str = VALID_FILENAME
-    story_delimiter: str = STORY_DELIMITER
-    special_tokens: SpecialTokens = SPECIAL_TOKENS
-
-
-DATA = DataConfig()
-
-# TRAINING STUFF
-SEED = 242
-MAX_TRAIN_STORIES = 1_000_000
-VOCAB_SIZE = 3_000
-CONTEXT_LENGTH = 128
-CHECKPOINT_EVERY = 100
-SAMPLE_PROMPTS = (
-    "This tale begins with an ogre in a swamp. ",
-    "The boring suburban life of Robert Parr, once Mr. Incredible",
-    "Manny the mammoth befriended a sloth and a sabre toothed tiger",
-    "Woody and Buzz Lightyear, two of Andy's toys had come alive!",
-    "There was no car faster than Lightning McQueen",
-)
+        self.metrics = RUN_DIR / run_id / "metrics"
+        self.models = RUN_DIR / run_id / "models"
+        self.plots = RUN_DIR / run_id / "plots"
 
 
 @dataclass
-class TrainingConfig:
-    seed: int = 242
-    max_train_stories: int = MAX_TRAIN_STORIES
-    vocab_size: int = VOCAB_SIZE
-    context_window: int = CONTEXT_LENGTH
-    checkpoint_every: int = CHECKPOINT_EVERY
-    sample_prompts: tuple[str] = SAMPLE_PROMPTS
+class DataConfig:
+    training_file: str = DATA_DIR / TRAIN_FILENAME
+    validation_file: str = DATA_DIR / VALID_FILENAME
 
 
-TRAINING_CONFIG = TrainingConfig()
+@dataclass
+class TokenConfig:
+    eos: str = "<eos>"
+    pad: str = "<pad>"
+    bos: str = "<bos>"
+    unk: str = "<unk>"
+
+
+@dataclass
+class GlobalTrainingConfig:
+    context_length: int = 128
+    checkpoint_every: int = 100
+
+
+@dataclass
+class TokenizationConfig:
+    story_delimiter: str = "<|endoftext|>"
+    vocab_size: int = 3_000
+    max_train_stories: int = 1_000_000
 
 
 @dataclass
