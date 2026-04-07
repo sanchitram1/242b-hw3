@@ -75,7 +75,7 @@ class GlobalTrainingConfig:
 @dataclass
 class TokenizationConfig:
     story_delimiter: str = "<|endoftext|>"
-    vocab_size: int = 3_000
+    vocab_size: int = 5_000
     max_train_stories: int = 1_000_000
 
 
