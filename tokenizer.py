@@ -8,12 +8,13 @@ from config import SHARED_DIR, TokenConfig, TokenizationConfig
 
 
 def iter_stories(
-    tokenization_config: TokenizationConfig, path: Path, limit: int | None = None
+    tokenization_config: TokenizationConfig,
+    training_file_path: Path,
 ) -> Iterable[str]:
     """Yields stories from the txt file one at a time"""
     buffer = ""
     count = 0
-    with path.open("r", encoding="utf-8") as handle:
+    with training_file_path.open("r", encoding="utf-8") as handle:
         while True:
             chunk = handle.read(8 * 1024 * 1024)
             if not chunk:
@@ -27,38 +28,68 @@ def iter_stories(
                     continue
                 yield story
                 count += 1
-                if limit is not None and count >= limit:
+                if (
+                    tokenization_config.max_train_stories is not None
+                    and count >= tokenization_config.max_train_stories
+                ):
                     return
         tail = buffer.strip()
-        if tail and (limit is None or count < limit):
+        if tail and (
+            tokenization_config.max_train_stories is None
+            or count < tokenization_config.max_train_stories
+        ):
             yield tail
 
 
 def count_tokens(
     tokenization_config: TokenizationConfig,
     tokenizer: Tokenizer,
-    path: Path,
-    story_limit: int | None = None,
+    training_file_path: Path,
 ) -> int:
     total = 0
-    for story in iter_stories(tokenization_config, path, limit=story_limit):
+    for story in iter_stories(tokenization_config, training_file_path):
         total += len(tokenizer.encode(story).ids) + 1  # +1 for the EOS Token!
     return total
 
 
+def _default_memmap_path(
+    tokenization_config: TokenizationConfig, input_path: Path
+) -> Path:
+    split = "valid" if "valid" in input_path.name.lower() else "train"
+    return (
+        SHARED_DIR
+        / "memmaps"
+        / f"{split}_tokens_metaspace_{tokenization_config.max_train_stories}_v{tokenization_config.vocab_size}.bin"
+    )
+
+
 def build_token_memmap(
+    tokenization_config: TokenizationConfig,
     token_config: TokenConfig,
     tokenizer: Tokenizer,
     path: Path,
     total_tokens: int,
-    output_path: Path,
-    story_limit: int | None = None,
+    output_path: Path | None = None,
 ) -> Path:
     """Returns the path of the built token memmap
 
     A memmap is basically like a token stream, but optimized for quick retrieval"""
+    output_path = Path(output_path) if output_path else _default_memmap_path(
+        tokenization_config, path
+    )
+    expected_bytes = total_tokens * np.dtype(np.uint32).itemsize
+
     if output_path.exists():
+        actual_bytes = output_path.stat().st_size
+        if actual_bytes != expected_bytes:
+            raise ValueError(
+                f"Found existing memmap at {output_path}, but its size is "
+                f"{actual_bytes} bytes; expected {expected_bytes} bytes for "
+                f"{total_tokens} uint32 tokens."
+            )
         return output_path
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # grab the EOS ID
     eos_id = tokenizer.token_to_id(token_config.eos)
@@ -71,17 +102,27 @@ def build_token_memmap(
 
     # iterate through the dataset and build it as a stream of tokens
     offset = 0
-    for story in iter_stories(path, limit=story_limit):
+    for story in iter_stories(tokenization_config, path):
         ids = tokenizer.encode(story).ids
 
         # force a gap here
         next_offset = offset + len(ids) + 1
+        if next_offset > total_tokens:
+            raise ValueError(
+                f"Memmap token count is too small: need at least {next_offset} "
+                f"tokens, but total_tokens={total_tokens}."
+            )
         token_array[offset : offset + len(ids)] = ids
 
         # put the EOS token in the gap
         token_array[offset + len(ids)] = eos_id
         offset = next_offset
     token_array.flush()
+    if offset != total_tokens:
+        raise ValueError(
+            f"Memmap token count mismatch: wrote {offset} tokens, but "
+            f"total_tokens={total_tokens}."
+        )
 
     return output_path
 
@@ -90,8 +131,6 @@ def build_tokenizer(
     tokenization_config: TokenizationConfig,
     token_config: TokenConfig,
     train_path: Path,
-    vocab_size: int,
-    story_limit: int,
 ) -> Tokenizer:
     """Trains a tokenizer based on the inputted data"""
     # initialize
@@ -105,7 +144,7 @@ def build_tokenizer(
 
     # init the trainer
     trainer = trainers.BpeTrainer(
-        vocab_size=vocab_size,
+        vocab_size=tokenization_config.vocab_size,
         min_frequency=2,
         show_progress=False,
         special_tokens=[
@@ -118,11 +157,15 @@ def build_tokenizer(
 
     # train!
     tokenizer.train_from_iterator(
-        iter_stories(tokenization_config, train_path, limit=story_limit),
+        iter_stories(tokenization_config, train_path),
         trainer=trainer,
-        length=story_limit,
+        length=tokenization_config.max_train_stories,
     )
+    SHARED_DIR.mkdir(parents=True, exist_ok=True)
     tokenizer.save(
-        str(SHARED_DIR / f"tinystories_bpe_metaspace_{vocab_size}_{story_limit}.json")
+        str(
+            SHARED_DIR
+            / f"tinystories_bpe_metaspace_{tokenization_config.vocab_size}_{tokenization_config.max_train_stories}.json"
+        )
     )
     return tokenizer

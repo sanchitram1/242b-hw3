@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 class TokenChunkDataset(Dataset):
     def __init__(self, token_path: Path, total_tokens: int, context_length: int):
         self.tokens = np.memmap(
-            token_path, dtype=np.uint16, mode="r", shape=(total_tokens,)
+            token_path, dtype=np.uint32, mode="r", shape=(total_tokens,)
         )
         self.context_length = context_length
         self.num_samples = (total_tokens - 1) // context_length
