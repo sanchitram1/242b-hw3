@@ -72,7 +72,7 @@ def train_model(
     # init the model
     model = TinyGPT(
         vocab_size=vocab_size,
-        context_length=global_training_config.context_window,
+        context_length=global_training_config.context_length,
         d_model=model_config.d_model,
         n_heads=model_config.n_heads,
         n_layers=model_config.n_layers,
@@ -189,7 +189,7 @@ def train_model(
             "model_state": model.state_dict(),
             "config": asdict(model_config),
             "vocab_size": vocab_size,
-            "context_length": global_training_config.context_window,
+            "context_length": global_training_config.context_length,
         },
         model_path,
     )

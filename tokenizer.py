@@ -141,6 +141,7 @@ def build_tokenizer(
     """Trains a tokenizer based on the inputted data"""
     tokenizer_path = _tokenizer_path(tokenization_config)
     if tokenizer_path.exists():
+        print(f"Found it in {tokenizer_path}, loading from there")
         return Tokenizer.from_file(str(tokenizer_path))
 
     # initialize

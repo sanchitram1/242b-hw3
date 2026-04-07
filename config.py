@@ -69,7 +69,7 @@ class TokenConfig:
 @dataclass
 class GlobalTrainingConfig:
     context_length: int = 128
-    checkpoint_every: int = 100
+    checkpoint_every: int = 1000
 
 
 @dataclass
