@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 
 @dataclass
 class TrainingResult:
@@ -59,3 +61,29 @@ def load_results_by_name(metrics_paths: dict[str, str | Path]) -> dict[str, Trai
 def load_generations(generations_path: str | Path) -> list[dict[str, Any]]:
     generations_path = Path(generations_path)
     return list(json.loads(generations_path.read_text(encoding="utf-8")))
+
+
+def generations_to_dataframe(
+    generations: list[dict[str, Any]],
+    temperature: float | None = None,
+    top_k: int | None = None,
+    value_column: str = "generated_text",
+) -> pd.DataFrame:
+    filtered = generations
+    if temperature is not None:
+        filtered = [
+            row for row in filtered if float(row.get("temperature")) == float(temperature)
+        ]
+    if top_k is not None:
+        filtered = [row for row in filtered if int(row.get("top_k")) == int(top_k)]
+
+    frame = pd.DataFrame(filtered)
+    if frame.empty:
+        return pd.DataFrame()
+
+    return frame.pivot_table(
+        index="prompt",
+        columns="model",
+        values=value_column,
+        aggfunc="first",
+    ).sort_index()
