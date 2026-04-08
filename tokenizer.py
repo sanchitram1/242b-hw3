@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Iterable
 
 import numpy as np
+import torch
 from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
 
 from config import SHARED_DIR, TokenConfig, TokenizationConfig
@@ -175,3 +176,51 @@ def build_tokenizer(
     tokenizer_path.parent.mkdir(parents=True, exist_ok=True)
     tokenizer.save(str(tokenizer_path))
     return tokenizer
+
+
+def get_token_vector(
+    tokenizer: Tokenizer,
+    embedding_source: torch.nn.Module | torch.Tensor,
+    token_text: str,
+) -> torch.Tensor:
+    """Returns the learned embedding vector for one tokenizer token."""
+    token_id = tokenizer.token_to_id(token_text)
+    if token_id is None:
+        raise ValueError(f"Token {token_text!r} is not in the tokenizer vocabulary.")
+
+    embeddings = _embedding_matrix(embedding_source)
+    return embeddings[token_id].detach().clone()
+
+
+def find_closest_tokens(
+    tokenizer: Tokenizer,
+    embedding_source: torch.nn.Module | torch.Tensor,
+    target_vector: torch.Tensor,
+    top_k: int = 10,
+) -> list[tuple[str, float]]:
+    """Finds tokenizer tokens closest to a vector by cosine similarity."""
+    embeddings = _embedding_matrix(embedding_source)
+    target = target_vector.detach().to(embeddings.device, dtype=embeddings.dtype)
+    if target.ndim == 1:
+        target = target.unsqueeze(0)
+
+    normalized_embeddings = torch.nn.functional.normalize(embeddings, dim=1)
+    normalized_target = torch.nn.functional.normalize(target, dim=1)
+    similarities = normalized_target @ normalized_embeddings.T
+    values, indices = torch.topk(similarities.squeeze(0), k=top_k)
+
+    return [
+        (tokenizer.id_to_token(int(index)), float(value))
+        for value, index in zip(values.detach().cpu(), indices.detach().cpu())
+    ]
+
+
+def _embedding_matrix(embedding_source: torch.nn.Module | torch.Tensor) -> torch.Tensor:
+    if isinstance(embedding_source, torch.Tensor):
+        return embedding_source.detach()
+    if hasattr(embedding_source, "token_embedding"):
+        return embedding_source.token_embedding.weight.detach()
+    raise TypeError(
+        "embedding_source must be either an embedding matrix tensor or a model with "
+        "a token_embedding layer."
+    )
