@@ -20,7 +20,6 @@ from tokenizer import build_token_memmap, build_tokenizer, count_tokens
 from training import train_model
 from utils import generate_text, save_json
 
-
 SAMPLE_PROMPTS = (
     "Early one morning",
     "One day, a group of friends went to the park.",
@@ -94,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint-every",
         type=int,
-        default=50_000,
+        default=10_000,
         help="Validation interval in optimizer steps.",
     )
     parser.add_argument(
@@ -153,7 +152,9 @@ def default_run_id(args: argparse.Namespace) -> str:
 def build_configs(
     args: argparse.Namespace,
     train_device: torch.device,
-) -> tuple[TokenConfig, DataConfig, GlobalTrainingConfig, TokenizationConfig, ModelConfig]:
+) -> tuple[
+    TokenConfig, DataConfig, GlobalTrainingConfig, TokenizationConfig, ModelConfig
+]:
     token_config = TokenConfig()
     data_config = DataConfig()
     global_training_config = GlobalTrainingConfig(
@@ -322,7 +323,9 @@ def save_manifest(
 def main() -> None:
     args = parse_args()
     train_device = resolve_device(args.device)
-    generation_device = resolve_device(args.generation_device) if args.generate_samples else None
+    generation_device = (
+        resolve_device(args.generation_device) if args.generate_samples else None
+    )
 
     if train_device.type == "cuda":
         print(f"Training on CUDA: {torch.cuda.get_device_name(0)}")
@@ -365,8 +368,14 @@ def main() -> None:
         save_json(result, metrics_path)
         print(f"Saved metrics to {metrics_path}")
 
-    plot_training_curves(results={model_config.name: result}, output_path=run_config.plots / "training_loss.png")
-    plot_validation_curves(results={model_config.name: result}, output_path=run_config.plots / "validation_loss.png")
+    plot_training_curves(
+        results={model_config.name: result},
+        output_path=run_config.plots / "training_loss.png",
+    )
+    plot_validation_curves(
+        results={model_config.name: result},
+        output_path=run_config.plots / "validation_loss.png",
+    )
     print(f"Saved plots to {run_config.plots}")
 
     generations_path = None
