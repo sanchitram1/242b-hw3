@@ -24,7 +24,10 @@ dev = [
 ]
 
 [project.scripts]
-run = "train:main"
+train = "train:main"
+fine-tune = "fine_tuning.fine_tune.py:main"
+
+# TODO: build_instruction_dataset + fill_instruction_prompts
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -17,7 +17,17 @@ def _tokenizer_path(tokenization_config: TokenizationConfig) -> Path:
 
 
 def _memmap_path(tokenization_config: TokenizationConfig, input_path: Path) -> Path:
-    split = "valid" if "valid" in input_path.name.lower() else "train"
+    name = input_path.name.lower()
+
+    if "instruction" in name and "valid" in name:
+        split = "instruction_valid"
+    elif "instruction" in name and "train" in name:
+        split = "instruction_train"
+    elif "valid" in name:
+        split = "valid"
+    else:
+        split = "train"
+
     return (
         SHARED_DIR
         / "memmaps"

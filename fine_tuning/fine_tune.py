@@ -226,19 +226,23 @@ def main() -> None:
         model_config,
     ) = load_checkpoint_configs(args.pretrained_model, args, device)
 
-    tokenizer, train_dataset, train_token_count, train_memmap_path = prepare_instruction_dataset(
-        args.instruction_training_file,
-        token_config,
-        tokenization_config,
-        global_training_config.context_length,
-        Path(data_config.training_file),
+    tokenizer, train_dataset, train_token_count, train_memmap_path = (
+        prepare_instruction_dataset(
+            args.instruction_training_file,
+            token_config,
+            tokenization_config,
+            global_training_config.context_length,
+            Path(data_config.training_file),
+        )
     )
-    _, valid_dataset, valid_token_count, valid_memmap_path = prepare_instruction_dataset(
-        args.instruction_validation_file,
-        token_config,
-        tokenization_config,
-        global_training_config.context_length,
-        Path(data_config.training_file),
+    _, valid_dataset, valid_token_count, valid_memmap_path = (
+        prepare_instruction_dataset(
+            args.instruction_validation_file,
+            token_config,
+            tokenization_config,
+            global_training_config.context_length,
+            Path(data_config.training_file),
+        )
     )
 
     train_loader = make_dataloader(
@@ -261,6 +265,7 @@ def main() -> None:
         dropout=args.lora_dropout,
         target_ff=args.target_ff,
     )
+    model = model.to(device)
     freeze_non_lora_parameters(model)
 
     trainable_parameters = [
