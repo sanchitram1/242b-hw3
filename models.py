@@ -172,10 +172,7 @@ def model_checkpoint_path(run_config: RunConfig, model_config: ModelConfig) -> P
     return run_config.models / f"{model_config.name}.pt"
 
 
-def load_model(
-    model_path: Path,
-    device: torch.device,
-) -> TinyGPT:
+def load_model(model_path: Path, device: torch.device, train=False) -> TinyGPT:
     """Loads a saved TinyGPT checkpoint and returns it in eval mode."""
     checkpoint = torch.load(model_path, map_location=device)
     config = ModelConfig(**checkpoint["config"])
@@ -189,5 +186,10 @@ def load_model(
         dropout=config.dropout,
     ).to(device)
     model.load_state_dict(checkpoint["model_state"])
-    model.eval()
+
+    if train:
+        model.train()
+    else:
+        model.eval()
+
     return model

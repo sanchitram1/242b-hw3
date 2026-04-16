@@ -29,7 +29,7 @@ def main():
     ]
 
     for i, training_story in enumerate(
-        iter_stories(tokenization_config, data_config.training_file_local)
+        iter_stories(tokenization_config, data_config.validation_file_local)
     ):
         all_stories.append(
             f"{instruction_tokens.prompt}: {starters[i % 4]}\n{instruction_tokens.response}: {training_story}"
@@ -40,10 +40,10 @@ def main():
 
     instructions = random.sample(all_stories, SAMPLE)
 
-    with open(f"{data_config.instruction_file}", "w") as f:
+    with open(f"{data_config.instruction_validation_file}", "w") as f:
         f.write(f"\n{tokenization_config.story_delimiter}\n\n".join(instructions))
 
-    print(f"Saved to {data_config.instruction_file}")
+    print(f"Saved to {data_config.instruction_validation_file}")
 
 
 if __name__ == "__main__":

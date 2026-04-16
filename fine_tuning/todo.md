@@ -1,0 +1,23 @@
+# Fine-Tuning TODO
+
+- [ ] Train longer LoRA runs.
+- [ ] Add response-only loss masking so the model is optimized mainly on the `Response:` portion.
+- [ ] Increase the amount of fine-tuning data.
+- [ ] Improve prompt quality and consistency in the instruction dataset.
+- [ ] Try different LoRA ranks.
+- [ ] Try different generation temperatures.
+- [ ] Try different `top_k` values.
+- [ ] Try different sampling strategies for generation.
+- [ ] Try LoRA on the feedforward / MLP layers in addition to attention.
+- [ ] Compare attention-only LoRA vs attention-plus-MLP LoRA.
+- [ ] Hold out a cleaner validation split and monitor overfitting more carefully.
+- [ ] Add a before-vs-after generation comparison script for the same prompts.
+- [ ] Save adapter-only checkpoints instead of only full wrapped checkpoints.
+- [ ] Try more prompt templates beyond `Write a story...` and `Tell me a tale...`.
+- [ ] Add harder prompts that test whether the model follows named entities and specific constraints.
+- [ ] Test whether shorter context windows during fine-tuning hurt instruction following.
+- [ ] Experiment with smaller learning rates for longer runs.
+- [ ] Experiment with lower LoRA dropout.
+- [ ] Try batching or curriculum strategies for short prompts first, then richer prompts.
+- [ ] Consider adding a few refusal / off-task redirection examples if we want slightly more assistant-like behavior.
+- [ ] Consider a small amount of synthetic data only after the hand-written dataset is working well.

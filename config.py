@@ -42,7 +42,8 @@ RUN_DIR = ACTIVE_ARTIFACTS_DIR / "runs"
 # Data files and configuration
 TRAIN_FILENAME = "TinyStoriesV2-GPT4-train.txt"
 VALID_FILENAME = "TinyStoriesV2-GPT4-valid.txt"
-INSTRUCTION_FILENAME = "fine_tuning-instructions.txt"
+INSTRUCTION_TRAIN_FILENAME = "fine_tuning-instructions-train.txt"
+INSTRUCTION_VALID_FILENAME = "fine_tuning-instructions-valid.txt"
 
 
 class RunConfig:
@@ -69,7 +70,8 @@ class RunConfig:
 class DataConfig:
     training_file: str = ACTIVE_DATA_DIR / TRAIN_FILENAME
     validation_file: str = ACTIVE_DATA_DIR / VALID_FILENAME
-    instruction_file: str = ACTIVE_DATA_DIR / INSTRUCTION_FILENAME
+    instruction_training_file: str = ACTIVE_DATA_DIR / INSTRUCTION_TRAIN_FILENAME
+    instruction_validation_file: str = ACTIVE_DATA_DIR / INSTRUCTION_VALID_FILENAME
     training_file_colab: str = COLAB_DIR / TRAIN_FILENAME
     training_file_local: str = DATA_DIR / TRAIN_FILENAME
     validation_file_colab: str = COLAB_DIR / VALID_FILENAME
