@@ -51,7 +51,9 @@ def load_training_result(metrics_path: str | Path) -> TrainingResult:
     )
 
 
-def load_results_by_name(metrics_paths: dict[str, str | Path]) -> dict[str, TrainingResult]:
+def load_results_by_name(
+    metrics_paths: dict[str, str | Path],
+) -> dict[str, TrainingResult]:
     return {
         model_name: load_training_result(metrics_path)
         for model_name, metrics_path in metrics_paths.items()
@@ -72,7 +74,9 @@ def generations_to_dataframe(
     filtered = generations
     if temperature is not None:
         filtered = [
-            row for row in filtered if float(row.get("temperature")) == float(temperature)
+            row
+            for row in filtered
+            if float(row.get("temperature")) == float(temperature)
         ]
     if top_k is not None:
         filtered = [row for row in filtered if int(row.get("top_k")) == int(top_k)]

@@ -99,7 +99,11 @@ def load_finetuned_model(
         context_length=checkpoint["context_length"],
     )
     base_checkpoint = checkpoint.get("base_checkpoint")
-    return model, global_training_config, Path(base_checkpoint) if base_checkpoint else checkpoint_path
+    return (
+        model,
+        global_training_config,
+        Path(base_checkpoint) if base_checkpoint else checkpoint_path,
+    )
 
 
 def build_prompt(user_prompt: str) -> str:
@@ -147,7 +151,9 @@ def main() -> None:
             max_train_stories=args.max_train_stories,
         ),
         token_config,
-        Path(__file__).resolve().parent.parent / "data" / "TinyStoriesV2-GPT4-train.txt",
+        Path(__file__).resolve().parent.parent
+        / "data"
+        / "TinyStoriesV2-GPT4-train.txt",
     )
 
     if args.prompt:

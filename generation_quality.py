@@ -94,7 +94,9 @@ def _ends_cleanly(text: str) -> bool:
 
 
 def _sentences(text: str) -> list[str]:
-    return [sentence.strip() for sentence in SENTENCE_RE.findall(text) if sentence.strip()]
+    return [
+        sentence.strip() for sentence in SENTENCE_RE.findall(text) if sentence.strip()
+    ]
 
 
 def _names(text: str) -> list[str]:
@@ -117,8 +119,10 @@ def _entity_metrics(text: str) -> dict[str, Any]:
     previous_sentence_names: set[str] | None = None
     for sentence in _sentences(text):
         sentence_names = set(_names(sentence))
-        if sentence_names and previous_sentence_names and not (
-            sentence_names & previous_sentence_names
+        if (
+            sentence_names
+            and previous_sentence_names
+            and not (sentence_names & previous_sentence_names)
         ):
             adjacent_name_switches += 1
         if sentence_names:
@@ -131,7 +135,9 @@ def _entity_metrics(text: str) -> dict[str, Any]:
         "male_pronouns": male_pronouns,
         "pronoun_mix": pronoun_mix,
         "adjacent_name_switches": adjacent_name_switches,
-        "entity_confusion_score": len(unique_names) + pronoun_mix + adjacent_name_switches,
+        "entity_confusion_score": len(unique_names)
+        + pronoun_mix
+        + adjacent_name_switches,
     }
 
 
@@ -149,7 +155,9 @@ def _summarize_rows(rows: list[dict[str, Any]]) -> dict[str, float | int]:
         "avg_unique_names": round(
             statistics.mean(_entity_metrics(text)["unique_names"] for text in texts), 2
         ),
-        "pronoun_mix_count": sum(_entity_metrics(text)["pronoun_mix"] for text in texts),
+        "pronoun_mix_count": sum(
+            _entity_metrics(text)["pronoun_mix"] for text in texts
+        ),
         "adjacent_name_switches": sum(
             _entity_metrics(text)["adjacent_name_switches"] for text in texts
         ),

@@ -212,6 +212,8 @@ def source_file_for_split(args: argparse.Namespace, data_config: DataConfig) -> 
 
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z'-]*")
 NAME_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
+
+# TODO: more elegant way pls
 PLACE_HINTS = {
     "park",
     "house",
@@ -448,7 +450,11 @@ def load_existing_progress(
     if metadata_file.exists():
         metadata_rows = json.loads(metadata_file.read_text(encoding="utf-8"))
 
-    if generated_examples and metadata_rows and len(generated_examples) != len(metadata_rows):
+    if (
+        generated_examples
+        and metadata_rows
+        and len(generated_examples) != len(metadata_rows)
+    ):
         raise ValueError(
             "Existing output and metadata files disagree on completed example count."
         )
