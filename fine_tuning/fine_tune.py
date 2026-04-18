@@ -1,4 +1,5 @@
 import argparse
+import json
 import math
 import time
 from dataclasses import asdict
@@ -214,6 +215,100 @@ def prepare_instruction_dataset(
     return tokenizer, dataset, token_count, token_memmap_path
 
 
+def _find_subsequence_positions(sequence: list[int], pattern: list[int]) -> list[int]:
+    if not pattern or len(pattern) > len(sequence):
+        return []
+    positions: list[int] = []
+    width = len(pattern)
+    for index in range(len(sequence) - width + 1):
+        if sequence[index : index + width] == pattern:
+            positions.append(index)
+    return positions
+
+
+def mask_response_only_targets(
+    x: torch.Tensor,
+    y: torch.Tensor,
+    prompt_pattern: list[int],
+    response_pattern: list[int],
+) -> torch.Tensor:
+    masked_y = y.clone()
+
+    for batch_index in range(x.size(0)):
+        x_row = x[batch_index].tolist()
+        prompt_positions = _find_subsequence_positions(x_row, prompt_pattern)
+        response_positions = _find_subsequence_positions(x_row, response_pattern)
+
+        if not prompt_positions and not response_positions:
+            continue
+
+        prompt_starts = set(prompt_positions)
+        response_starts = set(response_positions)
+
+        in_response = False
+        for token_index in range(x.size(1)):
+            if token_index in prompt_starts:
+                in_response = False
+            if token_index in response_starts:
+                in_response = True
+
+            if not in_response:
+                masked_y[batch_index, token_index] = -100
+
+    return masked_y
+
+
+def save_manifest(
+    run_config: RunConfig,
+    data_config: DataConfig,
+    tokenization_config: TokenizationConfig,
+    global_training_config: GlobalTrainingConfig,
+    model_config: ModelConfig,
+    train_device: torch.device,
+    args: argparse.Namespace,
+    model_path: Path,
+    metrics_path: Path,
+    train_memmap_path: Path,
+    valid_memmap_path: Path,
+) -> None:
+    manifest = {
+        "run_id": run_config.run_id,
+        "run_dir": str(run_config.run_dir),
+        "device": str(train_device),
+        "cuda_device": (
+            torch.cuda.get_device_name(0)
+            if train_device.type == "cuda" and torch.cuda.is_available()
+            else None
+        ),
+        "base_checkpoint": str(args.pretrained_model),
+        "data": {
+            "training_file": str(data_config.instruction_training_file),
+            "validation_file": str(data_config.instruction_validation_file),
+        },
+        "tokenization": asdict(tokenization_config),
+        "global_training": asdict(global_training_config),
+        "model": asdict(model_config),
+        "lora": {
+            "rank": args.rank,
+            "alpha": args.alpha,
+            "dropout": args.lora_dropout,
+            "target_ff": args.target_ff,
+        },
+        "artifacts": {
+            "models_dir": str(run_config.models),
+            "metrics_dir": str(run_config.metrics),
+            "plots_dir": str(run_config.plots),
+            "model_path": str(model_path),
+            "metrics_path": str(metrics_path),
+            "instruction_train_memmap_path": str(train_memmap_path),
+            "instruction_valid_memmap_path": str(valid_memmap_path),
+        },
+    }
+    manifest_path = run_config.run_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"Saved manifest to {manifest_path}")
+
+
 def main() -> None:
     args = parse_args()
     device = resolve_device(args.device)
@@ -290,6 +385,8 @@ def main() -> None:
     total_tokens_processed = 0
     autocast_dtype = torch.float16 if device.type == "cuda" else None
     vocab_size = tokenizer.get_vocab_size()
+    prompt_pattern = tokenizer.encode("Prompt:").ids
+    response_pattern = tokenizer.encode("Response:").ids
 
     for step in range(1, model_config.max_steps + 1):
         try:
@@ -309,6 +406,7 @@ def main() -> None:
 
         x = x.to(device, non_blocking=True)
         y = y.to(device, non_blocking=True)
+        masked_y = mask_response_only_targets(x, y, prompt_pattern, response_pattern)
         optimizer.zero_grad(set_to_none=True)
 
         with torch.autocast(
@@ -317,7 +415,11 @@ def main() -> None:
             enabled=model_config.use_amp and device.type == "cuda",
         ):
             logits = model(x)
-            loss = F.cross_entropy(logits.view(-1, vocab_size), y.view(-1))
+            loss = F.cross_entropy(
+                logits.view(-1, vocab_size),
+                masked_y.view(-1),
+                ignore_index=-100,
+            )
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
@@ -347,13 +449,38 @@ def main() -> None:
         )
 
         if step == 1 or step % global_training_config.checkpoint_every == 0:
-            metrics = evaluate(
-                model,
-                valid_loader,
-                device,
-                vocab_size=vocab_size,
-                use_amp=model_config.use_amp,
-            )
+            model.eval()
+            losses = []
+            total_tokens = 0
+            with torch.no_grad():
+                for valid_x, valid_y in valid_loader:
+                    valid_x = valid_x.to(device, non_blocking=True)
+                    valid_y = valid_y.to(device, non_blocking=True)
+                    masked_valid_y = mask_response_only_targets(
+                        valid_x,
+                        valid_y,
+                        prompt_pattern,
+                        response_pattern,
+                    )
+                    with torch.autocast(
+                        device_type=device.type,
+                        dtype=autocast_dtype,
+                        enabled=model_config.use_amp and device.type == "cuda",
+                    ):
+                        valid_logits = model(valid_x)
+                        valid_loss = F.cross_entropy(
+                            valid_logits.view(-1, vocab_size),
+                            masked_valid_y.view(-1),
+                            ignore_index=-100,
+                        )
+                    losses.append(valid_loss.item())
+                    total_tokens += int((masked_valid_y != -100).sum().item())
+            model.train()
+            metrics = {
+                "loss": float(sum(losses) / max(1, len(losses))),
+                "perplexity": float(math.exp(sum(losses) / max(1, len(losses)))),
+                "tokens_evaluated": total_tokens,
+            }
             metrics["step"] = step
             valid_history.append(metrics)
             print(
@@ -404,6 +531,19 @@ def main() -> None:
             "tokens_per_second": total_tokens_processed / max(total_time, 1e-9),
         },
         metrics_path,
+    )
+    save_manifest(
+        run_config,
+        data_config,
+        tokenization_config,
+        global_training_config,
+        model_config,
+        device,
+        args,
+        model_path,
+        metrics_path,
+        train_memmap_path,
+        valid_memmap_path,
     )
     print(f"Saved LoRA fine-tuned checkpoint to {model_path}")
     print(f"Saved metrics to {metrics_path}")
