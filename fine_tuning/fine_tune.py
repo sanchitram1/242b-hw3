@@ -19,7 +19,7 @@ from config import (
 )
 from models import TokenChunkDataset, load_model
 from tokenizer import build_token_memmap, build_tokenizer, count_tokens
-from training import compute_lr, evaluate
+from training import compute_lr
 from utils import count_parameters, make_dataloader, save_json
 
 

@@ -12,20 +12,24 @@ dependencies = [
     "numpy>=2.4.4",
     "pandas>=3.0.2",
     "python-dotenv>=1.2.2",
+    "requests>=2.32.5",
     "scikit-learn>=1.8.0",
     "tokenizers>=0.22.2",
     # "torch>=2.11.0", # for gpu configs, might need to comment this one out
+    "torch>=2.11.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",
+    "ruff>=0.15.11",
 ]
 
 [project.scripts]
 train = "train:main"
-fine-tune = "fine_tuning.fine_tune.py:main"
+fine-tune = "fine_tuning.fine_tune:main"
+controlled-prompts = "fine_tuning.controlled_prompts:main"
 
 # TODO: build_instruction_dataset + fill_instruction_prompts
 
